@@ -48,47 +48,25 @@ button.primary{background:var(--blue);color:white;border:none;padding:10px 16px;
 </div>
 
 <script type="module">
-import { 
-  initializeApp 
-} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
-
-import { 
-  getAuth, 
-  signInWithEmailAndPassword, 
-  signOut, 
-  onAuthStateChanged,
-  setPersistence,
-  browserSessionPersistence
-} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
-
-import { 
-  getFirestore, 
-  collection, 
-  getDocs, 
-  query, 
-  where 
-} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, setPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import { getFirestore, collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyByEiFSbsDlrCtVJjZgvbCoYPt_io2CpTk",
-  authDomain: "nlcalulator.firebaseapp.com",
-  projectId: "nlcalulator",
-  storageBucket: "nlcalulator.firebasestorage.app",
-  messagingSenderId: "783940164431",
-  appId: "1:783940164431:web:edd9e24a8e6901942b433a",
-  measurementId: "G-D8CXJYMPG0"
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  projectId: "YOUR_PROJECT",
+  storageBucket: "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
 };
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-
-// ⭐ VERY IMPORTANT FIX ⭐
-// Do NOT remember login after closing the tab.
-await setPersistence(auth, browserSessionPersistence);
-
 const db = getFirestore(app);
 
-const ADMIN_EMAIL = "anvirambhiya@gmail.com";
+// Force session-only login
+await setPersistence(auth, browserSessionPersistence);
 
 const loginPanel = document.getElementById('loginPanel');
 const loginEmail = document.getElementById('loginEmail');
@@ -105,37 +83,44 @@ const logoutBtn = document.getElementById('logoutBtn');
 let allModels = [];
 let inactivityTimer;
 
-/* inactivity auto logout (30s) */
-function resetInactivityTimer(){
+function resetInactivityTimer() {
   clearTimeout(inactivityTimer);
-  inactivityTimer = setTimeout(async ()=>{
-    try{ await signOut(auth); }catch(e){}
+  inactivityTimer = setTimeout(async () => {
+    try { await signOut(auth); } catch(e){}
     alert('Session expired due to inactivity. Please log in again.');
     location.reload();
   }, 30000);
 }
-['click','mousemove','keypress','scroll','touchstart']
-.forEach(ev => window.addEventListener(ev, resetInactivityTimer));
+['click','mousemove','keypress','scroll','touchstart'].forEach(ev => window.addEventListener(ev, resetInactivityTimer));
 
-/* login */
-loginBtn.addEventListener('click', async ()=>{
+// Login handler
+loginBtn.addEventListener('click', async () => {
   loginMsg.textContent = '';
-  const email = loginEmail.value.trim();
-  const pass = loginPass.value.trim();
-  if(!email||!pass){ loginMsg.textContent = 'Enter email & password'; return; }
+  const email = loginEmail.value.trim().toLowerCase();
+  const pass = loginPass.value;
+
+  if(!email || !pass) { loginMsg.textContent = 'Enter email & password'; return; }
+
   try {
-    await signInWithEmailAndPassword(auth, email, pass);
+    const userCredential = await signInWithEmailAndPassword(auth, email, pass);
+    const user = userCredential.user;
+
+    // Optional: enforce email verification
+    if (!user.emailVerified) {
+      loginMsg.textContent = 'Email not verified. Please check your inbox.';
+      await signOut(auth);
+      return;
+    }
   } catch(e){
     loginMsg.textContent = e.message || 'Login failed';
   }
 });
 
-/* auth state */
+// Auth state
 onAuthStateChanged(auth, async user => {
   resetInactivityTimer();
   if(user){
-    const email = user.email || '';
-    userEmail.textContent = email;
+    userEmail.textContent = user.email;
     logoutBtn.style.display = 'inline-block';
 
     try {
@@ -144,8 +129,7 @@ onAuthStateChanged(auth, async user => {
       let found = false;
 
       snap.forEach(d => {
-        const data = d.data();
-        if(data.role === 'user') found = true;
+        if(d.data().role === 'user') found = true;
       });
 
       if(found){
@@ -154,9 +138,8 @@ onAuthStateChanged(auth, async user => {
         loadModels();
       } else {
         await signOut(auth);
-        loginMsg.textContent = 'Access denied. Contact admin for access.';
+        loginMsg.textContent = 'Access denied. Contact admin.';
       }
-
     } catch(e){
       await signOut(auth);
       loginMsg.textContent = 'Server error. Try again.';
@@ -170,13 +153,13 @@ onAuthStateChanged(auth, async user => {
   }
 });
 
-/* logout */
-logoutBtn.addEventListener('click', async ()=>{
+// Logout
+logoutBtn.addEventListener('click', async () => {
   await signOut(auth);
   location.reload();
 });
 
-/* load models (read-only) */
+// Models load/search (same as your original)
 async function loadModels(){
   try {
     const snap = await getDocs(collection(db,'mobileModels'));
@@ -252,8 +235,7 @@ function renderModels(models){
       if(isIphone){
         const nlc = (Number(m.mop)||0) - ((Number(m.mop)||0) * dealer / 100);
         nlcText = `₹${nlc.toFixed(2)}`;
-      } 
-      else if(isSamsung){
+      } else if(isSamsung){
         if(!isNaN(upgrade) && upgrade>0){
           const val = dp - (preGstDp * dealer / 100) - sellout - sellin - (upgrade - 1000);
           nlcText += `Upgrade: ₹${val.toFixed(2)} `;
@@ -263,8 +245,7 @@ function renderModels(models){
           nlcText += `Finance: ₹${val.toFixed(2)}`;
         }
         if(!nlcText) nlcText = 'No valid upgrade values.';
-      }
-      else {
+      } else {
         const nlc = dp - (preGstDp * dealer / 100) - (sellout - (sellout * 0.18)) - sellin;
         nlcText = `₹${nlc.toFixed(2)}`;
       }
@@ -278,7 +259,3 @@ function renderModels(models){
 </script>
 </body>
 </html>
-
-
-
-
