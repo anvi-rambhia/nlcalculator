@@ -4,7 +4,9 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>KORE Mobiles — NLC Calculator</title>
+
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+
 <style>
 :root{--blue:#007bff;--light-bg:#f5f7fb;--white:#fff;--shadow:0 6px 18px rgba(0,0,0,0.07)}
 body{font-family:'Poppins',sans-serif;margin:0;background:var(--light-bg);color:#111}
@@ -21,9 +23,9 @@ button.primary{background:var(--blue);color:white;border:none;padding:10px 16px;
 .card{background:var(--white);border-radius:12px;box-shadow:var(--shadow);padding:16px}
 .final{font-weight:700;color:var(--blue)}
 .msg{color:#d9534f;margin-top:10px;text-align:center}
-@media(max-width:600px){.login-box{margin:60px 20px;padding:25px}}
 </style>
 </head>
+
 <body>
 
 <header>
@@ -48,47 +50,38 @@ button.primary{background:var(--blue);color:white;border:none;padding:10px 16px;
 </div>
 
 <script type="module">
-import { 
-  initializeApp 
-} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
-
-import { 
-  getAuth, 
-  signInWithEmailAndPassword, 
-  signOut, 
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import {
+  getAuth,
+  signInWithEmailAndPassword,
+  signOut,
   onAuthStateChanged,
   setPersistence,
   browserSessionPersistence
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
-
-import { 
-  getFirestore, 
-  collection, 
-  getDocs, 
-  query, 
-  where 
+import {
+  getFirestore,
+  collection,
+  getDocs,
+  query,
+  where
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyByEiFSbsDlrCtVJjZgvbCoYPt_io2CpTk",
   authDomain: "nlcalulator.firebaseapp.com",
   projectId: "nlcalulator",
-  storageBucket: "nlcalulator.firebasestorage.app",
+  storageBucket: "nlcalulator.appspot.com",
   messagingSenderId: "783940164431",
-  appId: "1:783940164431:web:edd9e24a8e6901942b433a",
-  measurementId: "G-D8CXJYMPG0"
+  appId: "1:783940164431:web:4113d9bbc5f35dab2b433a",
+  measurementId: "G-GWRHQPFTQ1"
 };
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-
-// ⭐ VERY IMPORTANT FIX ⭐
-// Do NOT remember login after closing the tab.
-await setPersistence(auth, browserSessionPersistence);
-
 const db = getFirestore(app);
 
-const ADMIN_EMAIL = "anvirambhiya@gmail.com";
+await setPersistence(auth, browserSessionPersistence);
 
 const loginPanel = document.getElementById('loginPanel');
 const loginEmail = document.getElementById('loginEmail');
@@ -97,187 +90,70 @@ const loginBtn = document.getElementById('loginBtn');
 const loginMsg = document.getElementById('loginMsg');
 
 const mainPanel = document.getElementById('mainPanel');
-const modelsGrid = document.getElementById('modelsGrid');
-const searchInput = document.getElementById('search');
 const userEmail = document.getElementById('userEmail');
 const logoutBtn = document.getElementById('logoutBtn');
 
-let allModels = [];
-let inactivityTimer;
-
-/* inactivity auto logout (30s) */
-function resetInactivityTimer(){
-  clearTimeout(inactivityTimer);
-  inactivityTimer = setTimeout(async ()=>{
-    try{ await signOut(auth); }catch(e){}
-    alert('Session expired due to inactivity. Please log in again.');
-    location.reload();
-  }, 30000);
-}
-['click','mousemove','keypress','scroll','touchstart']
-.forEach(ev => window.addEventListener(ev, resetInactivityTimer));
-
-/* login */
-loginBtn.addEventListener('click', async ()=>{
+loginBtn.addEventListener('click', async () => {
   loginMsg.textContent = '';
-  const email = loginEmail.value.trim();
-  const pass = loginPass.value.trim();
-  if(!email||!pass){ loginMsg.textContent = 'Enter email & password'; return; }
+
+  const email = loginEmail.value.trim();   // ✅ FIXED
+  const pass = loginPass.value;
+
+  if (!email || !pass) {
+    loginMsg.textContent = 'Enter email & password';
+    return;
+  }
+
   try {
     await signInWithEmailAndPassword(auth, email, pass);
-  } catch(e){
-    loginMsg.textContent = e.message || 'Login failed';
+  } catch (e) {
+    console.error('AUTH ERROR:', e.code, e.message);
+    loginMsg.textContent = e.code;
   }
 });
 
-/* auth state */
-onAuthStateChanged(auth, async user => {
-  resetInactivityTimer();
-  if(user){
-    const email = user.email || '';
-    userEmail.textContent = email;
-    logoutBtn.style.display = 'inline-block';
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    loginPanel.style.display = 'block';
+    mainPanel.style.display = 'none';
+    logoutBtn.style.display = 'none';
+    userEmail.textContent = '';
+    return;
+  }
 
-    try {
-      const q = query(collection(db,'users'), where('uid','==', user.uid));
-      const snap = await getDocs(q);
-      let found = false;
+  userEmail.textContent = user.email;
+  logoutBtn.style.display = 'inline-block';
 
-      snap.forEach(d => {
-        const data = d.data();
-        if(data.role === 'user') found = true;
-      });
+  try {
+    const q = query(collection(db, 'users'), where('uid', '==', user.uid));
+    const snap = await getDocs(q);
 
-      if(found){
-        loginPanel.style.display = 'none';
-        mainPanel.style.display = 'block';
-        loadModels();
-      } else {
-        await signOut(auth);
-        loginMsg.textContent = 'Access denied. Contact admin for access.';
-      }
+    let allowed = false;
+    snap.forEach(d => {
+      if (d.data().role === 'user') allowed = true;
+    });
 
-    } catch(e){
+    if (!allowed) {
       await signOut(auth);
-      loginMsg.textContent = 'Server error. Try again.';
+      loginMsg.textContent = 'Access denied. Contact admin.';
+      return;
     }
 
-  } else {
-    userEmail.textContent = '';
-    logoutBtn.style.display = 'none';
-    mainPanel.style.display = 'none';
-    loginPanel.style.display = 'block';
+    loginPanel.style.display = 'none';
+    mainPanel.style.display = 'block';
+
+  } catch (e) {
+    console.error(e);
+    await signOut(auth);
+    loginMsg.textContent = 'Server error';
   }
 });
 
-/* logout */
-logoutBtn.addEventListener('click', async ()=>{
+logoutBtn.addEventListener('click', async () => {
   await signOut(auth);
   location.reload();
 });
-
-/* load models (read-only) */
-async function loadModels(){
-  try {
-    const snap = await getDocs(collection(db,'mobileModels'));
-    allModels = [];
-    snap.forEach(d => allModels.push({ id: d.id, ...d.data() }));
-    renderModels([]);
-  } catch(e){ console.error('loadModels', e); }
-}
-
-searchInput.addEventListener('input', e => {
-  const val = e.target.value.toLowerCase().trim();
-  if(!val){ modelsGrid.innerHTML = ''; return; }
-  const filtered = allModels.filter(m => (m.name||'').toLowerCase().includes(val));
-  renderModels(filtered);
-});
-
-function renderModels(models){
-  modelsGrid.innerHTML = '';
-  if(!models || !models.length) return;
-
-  models.forEach(m=>{
-    const card = document.createElement('div');
-    card.className = 'card';
-
-    const upgradeLine = (m.upgrade && m.upgrade !== '0')
-      ? `<div>Upgrade: ₹${m.upgrade}</div>` : '';
-
-    const upgradeFinanceLine = (m.upgradeFinance && m.upgradeFinance !== '0')
-      ? `<div>Upgrade for Finance: ₹${m.upgradeFinance}</div>` : '';
-
-    let featuresHtml = '';
-    if(m.features){
-      const arr = m.features.split(/[.,;\n]/).filter(x=>x.trim());
-      featuresHtml = `<ul>${arr.map(x=>`<li>${x.trim()}</li>`).join('')}</ul>`;
-    }
-
-    card.innerHTML = `
-      <h4>${m.name||''}</h4>
-      <div>MOP: ₹${m.mop||0}</div>
-      <div>Sellout: ₹${m.sellout||0} | Sellin: ₹${m.sellin||0}</div>
-      <div>No Cost EMI: ₹${m.noCostEmi||0} | Full Swipe: ₹${m.fullSwipe||0}</div>
-      <div>Eligible Banks: ${(m.eligibleBanks||[]).join(', ')||'-'}</div>
-      ${upgradeLine}${upgradeFinanceLine}
-      ${featuresHtml}
-      <div style="margin-top:10px;display:flex;gap:8px">
-        <input type="number" class="dealerInput" placeholder="Dealer %" style="flex:1;padding:8px;border-radius:6px;border:1px solid #ccc"/>
-        <button class="primary calcBtn" style="padding:8px 12px">Calculate</button>
-      </div>
-      <div class="final" style="margin-top:8px">Final NLC: <span class="finalVal">—</span></div>
-    `;
-
-    const calcBtn = card.querySelector('.calcBtn');
-    const dealerInput = card.querySelector('.dealerInput');
-    const finalVal = card.querySelector('.finalVal');
-
-    calcBtn.addEventListener('click', ()=>{
-      const dealer = parseFloat(dealerInput.value);
-      if(isNaN(dealer)){ alert('Enter dealer %'); return; }
-
-      const name = (m.name||'').toLowerCase();
-      const isIphone = name.includes('iphone') || name.includes('apple');
-      const isSamsung = name.includes('samsung');
-
-      const dp = Number(m.dp)||0;
-      const preGstDp = Number(m.preGstDp)||0;
-      const sellout = Number(m.sellout)||0;
-      const sellin = Number(m.sellin)||0;
-      const upgrade = parseFloat(m.upgrade||0);
-      const upgradeFinance = parseFloat(m.upgradeFinance||0);
-
-      let nlcText = '';
-
-      if(isIphone){
-        const nlc = (Number(m.mop)||0) - ((Number(m.mop)||0) * dealer / 100);
-        nlcText = `₹${nlc.toFixed(2)}`;
-      } 
-      else if(isSamsung){
-        if(!isNaN(upgrade) && upgrade>0){
-          const val = dp - (preGstDp * dealer / 100) - sellout - sellin - (upgrade - 1000);
-          nlcText += `Upgrade: ₹${val.toFixed(2)} `;
-        }
-        if(!isNaN(upgradeFinance) && upgradeFinance>0){
-          const val = dp - (preGstDp * dealer / 100) - sellout - sellin - (upgradeFinance - 1000);
-          nlcText += `Finance: ₹${val.toFixed(2)}`;
-        }
-        if(!nlcText) nlcText = 'No valid upgrade values.';
-      }
-      else {
-        const nlc = dp - (preGstDp * dealer / 100) - (sellout - (sellout * 0.18)) - sellin;
-        nlcText = `₹${nlc.toFixed(2)}`;
-      }
-
-      finalVal.textContent = nlcText;
-    });
-
-    modelsGrid.appendChild(card);
-  });
-}
 </script>
+
 </body>
 </html>
-
-
-
