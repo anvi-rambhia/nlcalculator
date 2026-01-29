@@ -1,159 +1,16 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>KORE Mobiles — NLC Calculator</title>
-
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
-
-<style>
-:root{--blue:#007bff;--light-bg:#f5f7fb;--white:#fff;--shadow:0 6px 18px rgba(0,0,0,0.07)}
-body{font-family:'Poppins',sans-serif;margin:0;background:var(--light-bg);color:#111}
-header{background:var(--white);box-shadow:var(--shadow);display:flex;justify-content:space-between;align-items:center;padding:12px 20px;position:sticky;top:0;z-index:10}
-header h2{margin:0;color:var(--blue);font-size:1.2rem}
-header div{display:flex;align-items:center;gap:10px}
-header button{background:none;border:1px solid var(--blue);color:var(--blue);border-radius:8px;padding:6px 14px;cursor:pointer;font-weight:600}
-.login-box{background:var(--white);padding:30px;max-width:360px;margin:100px auto;border-radius:12px;box-shadow:var(--shadow);text-align:center}
-.login-box input{width:95%;padding:10px;border:1px solid #ccc;border-radius:8px;margin-bottom:12px}
-button.primary{background:var(--blue);color:white;border:none;padding:10px 16px;border-radius:8px;cursor:pointer;font-weight:600;width:100%}
-.container{max-width:1100px;margin:25px auto;padding:0 15px}
-.search{width:100%;padding:12px;border-radius:10px;border:1px solid #ccc;font-size:1rem;box-shadow:var(--shadow);background:var(--white)}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px;margin-top:25px}
-.card{background:var(--white);border-radius:12px;box-shadow:var(--shadow);padding:16px}
-.final{font-weight:700;color:var(--blue)}
-.msg{color:#d9534f;margin-top:10px;text-align:center}
-</style>
-</head>
-
-<body>
-
-<header>
-  <h2>KORE Mobiles — NLC Calculator</h2>
-  <div>
-    <span id="userEmail"></span>
-    <button id="logoutBtn" style="display:none">Logout</button>
-  </div>
-</header>
-
-<div id="loginPanel" class="login-box">
-  <h3>Login to Continue</h3>
-  <input id="loginEmail" type="email" placeholder="Email" />
-  <input id="loginPass" type="password" placeholder="Password" />
-  <button class="primary" id="loginBtn">Login</button>
-  <p id="loginMsg" class="msg"></p>
-</div>
-
-<div id="mainPanel" class="container" style="display:none">
-  <input id="search" class="search" type="text" placeholder="Search models by name...">
-  <div id="modelsGrid" class="grid"></div>
-</div>
-
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
-import {
-  getAuth,
-  signInWithEmailAndPassword,
-  signOut,
-  onAuthStateChanged,
-  setPersistence,
-  browserSessionPersistence
-} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
-import {
-  getFirestore,
-  collection,
-  getDocs,
-  query,
-  where
-} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 
-const firebaseConfig = {
+const app = initializeApp({
   apiKey: "AIzaSyByEiFSbsDlrCtVJjZgvbCoYPt_io2CpTk",
   authDomain: "nlcalulator.firebaseapp.com",
-  projectId: "nlcalulator",
-  storageBucket: "nlcalulator.appspot.com",
-  messagingSenderId: "783940164431",
-  appId: "1:783940164431:web:4113d9bbc5f35dab2b433a",
-  measurementId: "G-GWRHQPFTQ1"
-};
+  projectId: "nlcalulator"
+});
 
-const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-const db = getFirestore(app);
 
-await setPersistence(auth, browserSessionPersistence);
-
-const loginPanel = document.getElementById('loginPanel');
-const loginEmail = document.getElementById('loginEmail');
-const loginPass = document.getElementById('loginPass');
-const loginBtn = document.getElementById('loginBtn');
-const loginMsg = document.getElementById('loginMsg');
-
-const mainPanel = document.getElementById('mainPanel');
-const userEmail = document.getElementById('userEmail');
-const logoutBtn = document.getElementById('logoutBtn');
-
-loginBtn.addEventListener('click', async () => {
-  loginMsg.textContent = '';
-
-  const email = loginEmail.value.trim();   // ✅ FIXED
-  const pass = loginPass.value;
-
-  if (!email || !pass) {
-    loginMsg.textContent = 'Enter email & password';
-    return;
-  }
-
-  try {
-    await signInWithEmailAndPassword(auth, email, pass);
-  } catch (e) {
-    console.error('AUTH ERROR:', e.code, e.message);
-    loginMsg.textContent = e.code;
-  }
-});
-
-onAuthStateChanged(auth, async (user) => {
-  if (!user) {
-    loginPanel.style.display = 'block';
-    mainPanel.style.display = 'none';
-    logoutBtn.style.display = 'none';
-    userEmail.textContent = '';
-    return;
-  }
-
-  userEmail.textContent = user.email;
-  logoutBtn.style.display = 'inline-block';
-
-  try {
-    const q = query(collection(db, 'users'), where('uid', '==', user.uid));
-    const snap = await getDocs(q);
-
-    let allowed = false;
-    snap.forEach(d => {
-      if (d.data().role === 'user') allowed = true;
-    });
-
-    if (!allowed) {
-      await signOut(auth);
-      loginMsg.textContent = 'Access denied. Contact admin.';
-      return;
-    }
-
-    loginPanel.style.display = 'none';
-    mainPanel.style.display = 'block';
-
-  } catch (e) {
-    console.error(e);
-    await signOut(auth);
-    loginMsg.textContent = 'Server error';
-  }
-});
-
-logoutBtn.addEventListener('click', async () => {
-  await signOut(auth);
-  location.reload();
-});
+signInWithEmailAndPassword(auth, "test@gmail.com", "YOUR_PASSWORD")
+  .then(() => alert("LOGIN OK"))
+  .catch(e => alert(e.code));
 </script>
-
-</body>
-</html>
