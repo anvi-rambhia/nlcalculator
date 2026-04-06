@@ -427,9 +427,27 @@ saveUserBtn.addEventListener('click', async () => {
   if(!name || !email || !pass){ alert('Fill all fields'); return; }
 
   try {
-    await db.collection('users').add({
-      name, email, password: pass, createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
+    auth.createUserWithEmailAndPassword(email, pass)
+.then(async (userCredential) => {
+
+  const user = userCredential.user;
+
+  await db.collection('users').doc(user.uid).set({
+    uid: user.uid,
+    name: name,
+    email: email,
+    role: "user",
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+
+  alert("User created");
+  loadUsers();
+
+})
+.catch(e => {
+  console.error(e);
+  alert(e.message);
+});
     alert('User added');
     u_name.value = ''; u_email.value = ''; u_pass.value = '';
     loadUsers();
