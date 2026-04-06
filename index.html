@@ -107,11 +107,11 @@ loginBtn.addEventListener('click', async () => {
     const user = userCredential.user;
 
     // Optional: enforce email verification
-    if (!user.emailVerified) {
-      loginMsg.textContent = 'Email not verified. Please check your inbox.';
-      await signOut(auth);
-      return;
-    }
+    // if (!user.emailVerified) {
+    //   loginMsg.textContent = 'Email not verified. Please check your inbox.';
+    //   await signOut(auth);
+    //   return;
+    // }
   } catch(e){
     loginMsg.textContent = e.message || 'Login failed';
   }
