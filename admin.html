@@ -544,6 +544,7 @@ const saveUserBtn = document.getElementById('saveUserBtn');
 /* ------------------ Admin control ------------------ */
 
 const ADMIN_EMAIL = "anvirambhiya@gmail.com";
+let adminPassword = "Reeva@24";        
 
 /* ------------------ Admin login ------------------ */
 
@@ -551,6 +552,7 @@ loginBtn.addEventListener('click', () => {
 
   const email = loginEmail.value.trim();
   const pass = loginPass.value.trim();
+    adminPassword = pass;
 
   loginMsg.textContent = '';
 
@@ -715,7 +717,7 @@ saveUserBtn.addEventListener('click', async () => {
 
       /* IMPORTANT: restore admin session */
 
-      await auth.signInWithEmailAndPassword(ADMIN_EMAIL, loginPass.value);
+      await auth.signInWithEmailAndPassword(ADMIN_EMAIL, adminPassword);
 
       loadUsers();
 
