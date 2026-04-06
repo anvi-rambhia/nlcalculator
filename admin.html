@@ -233,18 +233,25 @@ logoutBtn.addEventListener('click', async () => {
 });
 
 /* Auto check */
-auth.onAuthStateChanged(user => {
-  if(user && user.email && user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase()){
-    loginBox.style.display = 'none';
-    adminSection.style.display = 'block';
-    showPanel('modelsPanel');
-    loadModels();
-    loadUsers();
-  } else {
-    loginBox.style.display = 'block';
-    adminSection.style.display = 'none';
+auth.onAuthStateChanged(auth, (user) => {
+
+  if(!user){
+    location.href = "index.html";
+    return;
   }
+
+  if(user.email !== "anvirambhiya@gmail.com"){
+    alert("Admin access only");
+    location.href = "index.html";
+    return;
+  }
+
 });
+//   } else {
+//     loginBox.style.display = 'block';
+//     adminSection.style.display = 'none';
+//   }
+// });
 
 /* ------------------ MODELS ------------------ */
 let editModelId = null;
