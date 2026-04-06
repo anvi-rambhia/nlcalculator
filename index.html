@@ -133,18 +133,22 @@ onAuthStateChanged(auth, async user => {
         if(d.data().role === 'user') found = true;
       });
 
-      if(found){
-        loginPanel.style.display = 'none';
-        mainPanel.style.display = 'block';
-        loadModels();
-      } else {
-        await signOut(auth);
-        loginMsg.textContent = 'Access denied. Contact admin.';
-      }
-    } catch(e){
-      await signOut(auth);
-      loginMsg.textContent = 'Server error. Try again.';
-    }
+      loginPanel.style.display = 'none';
+mainPanel.style.display = 'block';
+loadModels();
+
+    //   if(found){
+    //     loginPanel.style.display = 'none';
+    //     mainPanel.style.display = 'block';
+    //     loadModels();
+    //   } else {
+    //     await signOut(auth);
+    //     loginMsg.textContent = 'Access denied. Contact admin.';
+    //   }
+    // } catch(e){
+    //   await signOut(auth);
+    //   loginMsg.textContent = 'Server error. Try again.';
+    // }
 
   } else {
     userEmail.textContent = '';
